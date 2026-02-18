@@ -93,13 +93,15 @@ async function enqueueSecurityAnalysisJob(jobData) {
 async function getQueueMetrics() {
     // Assigns multiple awaited promises to variables
     // Result is array of their individual results, in order
+    // Promise.all is more efficient than awaiting each one sequentially
     const [waiting, active, completed, failed] = await Promise.all([
         securitySentinelQueue.getWaitingCount(),
         securitySentinelQueue.getActiveCount(),
         securitySentinelQueue.getCompletedCount(),
         securitySentinelQueue.getFailedCount()
     ]);
-
+    
+    // Returns object with all four metrics
     return {
         waiting,
         active,
@@ -108,6 +110,8 @@ async function getQueueMetrics() {
     };
 }
 
+// In Node.js, we export functions and objects and this is what is exported
+// when other files require() this module
 module.exports = {
     enqueueSecurityAnalysisJob,
     getQueueMetrics,
