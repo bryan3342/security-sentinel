@@ -5,40 +5,28 @@
  * @module queue/producer
  */
 
-// Using BullMQ for job queueing
 const { Queue } = require('bullmq');
 const Redis = require('ioredis');
-// Constantly called this for using our winston logger
 const logger = require('../utils/logger');
 
-// Creating Redis connection
-// We use Redis for BullMQ backend, BullMQ stores all job data
-// in Redis. Redis is an in-memory database that's extremely fast,
-// perfect for job queues.
 const connection = new Redis({
     host: process.env.REDIS_HOST || 'localhost',
     port: process.env.REDIS_PORT || 6379,
     password: process.env.REDIS_PASSWORD || undefined,
+    // Required by BullMQ — prevents ioredis from throwing on long-running commands
     maxRetriesPerRequest: null
 });
 
-// Creating BullMQ Queue
 const securitySentinelQueue = new Queue('security-analysis', {
     connection,
-    // Settings applied to all jobs added to this queue
     defaultJobOptions: {
         attempts: 3,
         backoff: {
-            // Each retry will wait longer (exponential backoff)
             type: 'exponential',
             delay: 2000
         },
-        removeOnComplete: {
-            count : 100 // Keep last 100 completed jobs
-        },
-        removeOnFail: {
-            count : 100 // Keep last 100 failed jobs
-        }
+        removeOnComplete: { count: 100 },
+        removeOnFail: { count: 100 }
     },
 
 });
@@ -59,21 +47,16 @@ async function enqueueSecurityAnalysisJob(jobData) {
         const job = await securitySentinelQueue.add(
             'analyze-commit',
             jobData,
-            {   
-                // 1 - Highest, 10 - Lowest, default is 5
+            {
                 priority: jobData.priority || 5,
-                // Custom job ID to prevent duplicates
-                // Ex: Creates jobId like "owner/repo-commitSha"
+                // Deduplication: same repo + commit won't be enqueued twice
                 jobId: `${jobData.repository}-${jobData.commitSha}`
             }
         );
 
-        logger.info('Job Enqueued Successfully', {
-            // Winston logs job details are JSON data
-            // Needed for filtering and searching logs
+        logger.info('Job enqueued successfully', {
             jobId: job.id,
             repository: jobData.repository,
-            // Shorten commit SHA for readability
             commitSha: jobData.commitSha.substring(0, 7)
         });
 
@@ -88,12 +71,11 @@ async function enqueueSecurityAnalysisJob(jobData) {
 }
 
 
-/* Getting Queue Health Metrics */
-
+/**
+ * Fetch current queue health metrics.
+ * @returns {Promise<{waiting: number, active: number, completed: number, failed: number}>}
+ */
 async function getQueueMetrics() {
-    // Assigns multiple awaited promises to variables
-    // Result is array of their individual results, in order
-    // Promise.all is more efficient than awaiting each one sequentially
     const [waiting, active, completed, failed] = await Promise.all([
         securitySentinelQueue.getWaitingCount(),
         securitySentinelQueue.getActiveCount(),
@@ -101,7 +83,6 @@ async function getQueueMetrics() {
         securitySentinelQueue.getFailedCount()
     ]);
     
-    // Returns object with all four metrics
     return {
         waiting,
         active,
@@ -110,8 +91,6 @@ async function getQueueMetrics() {
     };
 }
 
-// In Node.js, we export functions and objects and this is what is exported
-// when other files require() this module
 module.exports = {
     enqueueSecurityAnalysisJob,
     getQueueMetrics,

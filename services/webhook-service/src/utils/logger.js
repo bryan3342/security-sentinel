@@ -1,10 +1,7 @@
-/** Winston Logger
- * This module sets up a Winston logger for the webhook service.
- * It configures different transports for console and file logging,
- * and formats logs in JSON with timestamps.
+/**
+ * Structured JSON logger (Winston) shared across the webhook service.
+ * Transports: colorized console, `logs/error.log`, `logs/combined.log`.
  * @module utils/logger
- * @requires winston
- * @exports logger
  */
 
 const winston = require('winston');

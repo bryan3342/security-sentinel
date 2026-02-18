@@ -1,16 +1,25 @@
 /**
- * WebHook Payload Validation Middleware
- * This middleware validates the payload of incoming webhook requests
- * to ensure they conform to expected formats and contain required fields.
+ * Webhook payload validation middleware.
  * @module middleware/validator
  */
 
 const logger = require('../utils/logger');
 
+/**
+ * Validate that a GitHub webhook payload contains the fields required for
+ * security analysis. Unsupported event types receive a 200 (not 4xx) to
+ * prevent GitHub from retrying (see ADR-002).
+ *
+ * Side effect: sets `req.githubEvent` to the validated event type.
+ *
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
 function validatePayload(req, res, next) {
     const event = req.headers['x-github-event'];
     const payload = req.body;
-    
+
     const validEvents = ['push', 'pull_request'];
 
     if (!validEvents.includes(event)) {
