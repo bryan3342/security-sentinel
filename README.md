@@ -429,20 +429,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## For Recruiters & Hiring Managers
-
-Security Sentinel demonstrates proficiency in:
-
-- **Full-Stack Development**: Node.js, Python, Docker, Redis, PostgreSQL
-- **AI/ML Integration**: LLM API usage, prompt engineering, multi-agent systems
-- **DevSecOps**: Security-first design, automated testing, CI/CD
-- **System Architecture**: Microservices, event-driven design, asynchronous processing
-- **Production Engineering**: Error handling, logging, monitoring, graceful degradation
-
-This is a **production-quality** project demonstrating senior-level engineering practices, not a tutorial or toy application. The codebase emphasizes security, reliability, and maintainability—the hallmarks of professional software engineering.
-
----
-
-<p align="center">
-  <i>Built by Bryan | Autonomous Security for the Modern Development Workflow</i>
-</p>
