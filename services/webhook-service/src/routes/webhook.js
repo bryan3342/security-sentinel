@@ -12,8 +12,8 @@
  const express = require('express');
  const router = express.Router();
  const { enqueueSecurityAnalysisJob }= require('../queue/producer');
- const verifyGitHubSignature = require('../middleware/auth');
- const validateWebhookPayload = require('../middleware/validator');
+ const { verifyGitHubSignature } = require('../middleware/auth');
+ const { validatePayload } = require('../middleware/validator');
  const logger = require('../utils/logger');
 
  /** Extract changed files from webhook payload 
@@ -79,9 +79,9 @@
  */
 
 router.post(
-    '/', 
-    verifyGitHubSignature, 
-    validateWebhookPayload, 
+    '/',
+    verifyGitHubSignature,
+    validatePayload,
     async (req, res) => {
         try {
             const event = req.githubEvent;
@@ -100,12 +100,13 @@ router.post(
                 repository,
                 commitSha,
                 changedFiles,
-                branch: event === 'push' 
+                branch: event === 'push'
                 ? payload.ref.replace('refs/heads/', '')
                 : payload.pull_request.head.ref,
                 author: payload.sender.login,
                 timestamp: new Date().toISOString(),
                 priority: determineJobPriority(payload, event, changedFiles),
+                correlationId: req.correlationId,
                 /* Addtional context can be added here */
                 pullRequestUrl: payload.pull_request ? payload.pull_request.html_url : null
             };
@@ -117,26 +118,30 @@ router.post(
             res.status(200).json({
                 message: 'Webhook received and job enqueued',
                 jobId: job.id,
-                priority: jobData.priority
+                priority: jobData.priority,
+                correlationId: req.correlationId
             });
 
             logger.info('Webhook processed successfully', {
                 event,
                 repository,
                 jobId: job.id,
-                priority: jobData.priority
+                priority: jobData.priority,
+                correlationId: req.correlationId
              });
         } catch (error) {
-            logger.error('Error processing webhook', { 
+            logger.error('Error processing webhook', {
                 error: error.message,
-                stack: error.stack
+                stack: error.stack,
+                correlationId: req.correlationId
              });
 
              // Still return 200 to Github to avoid retries
              // Logged error for investigation
              res.status(200).json({
                 message: 'Webhook received but failed to process',
-                error: error.message
+                error: error.message,
+                correlationId: req.correlationId
              });
         }
     }

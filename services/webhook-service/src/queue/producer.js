@@ -57,14 +57,16 @@ async function enqueueSecurityAnalysisJob(jobData) {
         logger.info('Job enqueued successfully', {
             jobId: job.id,
             repository: jobData.repository,
-            commitSha: jobData.commitSha.substring(0, 7)
+            commitSha: jobData.commitSha.substring(0, 7),
+            correlationId: jobData.correlationId
         });
 
         return job;
     } catch (error) {
-        logger.error('Failed to Enqueue Job', { 
+        logger.error('Failed to Enqueue Job', {
             error: error.message,
-            repository: jobData.repository
+            repository: jobData.repository,
+            correlationId: jobData.correlationId
          });
         throw error;
     }

@@ -18,15 +18,35 @@ function verifyGitHubSignature(req, res, next) {
     const secret = process.env.GITHUB_WEBHOOK_SECRET;
 
     if (!signature || !secret) {
-        logger.warn('Missing signature or secret for webhook verification');
+        logger.warn('Missing signature or secret for webhook verification', {
+            correlationId: req.correlationId
+        });
         return res.status(401).send('Unauthorized : Missing signature or secret');
+    }
+
+    // HMAC must be computed against the exact raw bytes GitHub signed.
+    // The Express JSON parser captures these into req.rawBody — see index.js.
+    if (!req.rawBody) {
+        logger.error('Raw body unavailable for HMAC verification', {
+            correlationId: req.correlationId
+        });
+        return res.status(500).send('Server misconfigured: rawBody not captured');
     }
 
     const signatureHash = signature.split('=')[1];
 
     const hmac = crypto.createHmac('sha256', secret);
-    hmac.update(JSON.stringify(req.body));
+    hmac.update(req.rawBody);
     const computedHash = hmac.digest('hex');
+
+    // Lengths must match before timingSafeEqual (it throws on mismatch).
+    if (signatureHash.length !== computedHash.length) {
+        logger.warn('Signature length mismatch', {
+            correlationId: req.correlationId,
+            sourceIP: req.ip
+        });
+        return res.status(401).send('Unauthorized : Invalid signature');
+    }
 
     // Timing-safe comparison to prevent timing attacks (see ADR-003)
     const isValid = crypto.timingSafeEqual(
@@ -37,12 +57,16 @@ function verifyGitHubSignature(req, res, next) {
     if (!isValid) {
         logger.warn('Invalid webhook signature', {
             received: signatureHash.substring(0, 10) + '...',
-            sourceIP: req.ip
+            sourceIP: req.ip,
+            correlationId: req.correlationId
         });
         return res.status(401).send('Unauthorized : Invalid signature');
     }
 
-    logger.debug('Webhook signature verified successfully', { sourceIP: req.ip });
+    logger.debug('Webhook signature verified successfully', {
+        sourceIP: req.ip,
+        correlationId: req.correlationId
+    });
     next();
 }
 
